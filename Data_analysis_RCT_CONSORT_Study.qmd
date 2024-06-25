@@ -348,7 +348,9 @@ dev.off()
 
 # Abstract data
 
-## Load data from Google Sheets
+## Load & save 
+
+The original data files used for scoring articles were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be comiited to git and then we (and anyone else) can load from there in future
 
 ```{r message = FALSE, warning = FALSE, results=FALSE}
 # Study 1 abstract adherence data
@@ -356,6 +358,7 @@ abstract_adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spr
 
 head(abstract_adherence_data)
 # View(abstract_adherence_data)
+
 ```
 
 ## Clean & Prepare Data
@@ -1583,7 +1586,7 @@ The published online version of this document can be accessed here.
 
 ### Git/ Github
 
-The repository for the code used here can be accessed via this link.
+The repository for the code used here can be accessed via this [link](https://github.com/rheirene/behav_addic_consort_adherence_outcome_switch).
 
 Git and Github set up following the guide presented [here](https://raps-with-r.dev/git.html). From this book:
 
