@@ -362,7 +362,7 @@ abstract_adherence_data <- abstract_adherence_data %>% mutate(`Study no.` = unli
 
 write_csv(abstract_adherence_data, "Data/abstract_adherence_data.csv")
 
-abstract_adherence_data_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/abstract_adherence_data.csv" 
+abstract_adherence_data_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/abstract_adherence_data.csv" # Note: 
 
 abstract_adherence_data <- read_csv(abstract_adherence_data_url) %>%
   as_tibble()
