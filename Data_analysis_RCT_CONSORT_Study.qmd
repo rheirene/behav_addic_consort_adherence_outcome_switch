@@ -94,38 +94,42 @@ plot_theme<- theme_classic() +
 
 ## Load data from Google Sheets
 
-We'll first loading two datasheets: one for title and abstract screening and one for full text screening. The original data files were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be committed to git and then we (and anyone else) can load from there in future:
+We'll first loading two datasheets: one for title and abstract screening and one for full text screening. The original data files were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be committed to git and then we (and anyone else) can load from there in future. In the interest of transparency, I have left all code included here but commented out the downloading and saving from GS.
 
 ```{r message = FALSE, warning = FALSE, results=FALSE}
 # Title and abstract screening data:
-title_abstract_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=34341577#gid=34341577", "T&A Screening FINAL")  %>%
-as_tibble() 
+# title_abstract_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=34341577#gid=34341577", "T&A Screening FINAL")  %>%
+# as_tibble() 
+# 
+# head(title_abstract_screening_temp)
+# 
+# title_abstract_screening_temp <- title_abstract_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
+# 
+# write_csv(title_abstract_screening_temp, "Data/title_abstract_screening_temp.csv")
+
+title_abstract_screening_temp_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/title_abstract_screening_temp.csv" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
+
+title_abstract_screening_temp <- read_csv(title_abstract_screening_temp_url) %>%
+  as_tibble()
 
 head(title_abstract_screening_temp)
 
-title_abstract_screening_temp <- title_abstract_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
-
-write_csv(title_abstract_screening_temp, "Data/title_abstract_screening_temp.csv")
-
-title_abstract_screening_temp_url <- "" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
-
-abstract_adherence_data <- read_csv(abstract_adherence_data_url) %>%
-  as_tibble()
-
 # Fulltext screening data:
-full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
-as_tibble() 
+# full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
+# as_tibble() 
+
+# head(full_text_screening_temp)
+
+# full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
+
+# write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
+
+full_text_screening_temp_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/full_text_screening_temp.csv" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
+
+full_text_screening_temp_url <- read_csv(full_text_screening_temp_url) %>%
+  as_tibble()
 
 head(full_text_screening_temp)
-
-full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
-
-write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
-
-full_text_screening_temp_url <- "" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
-
-abstract_adherence_data <- read_csv(abstract_adherence_data_url) %>%
-  as_tibble()
 
 ```
 
@@ -510,10 +514,22 @@ summarise(
 
 ```{r message = FALSE, warning = FALSE, results=FALSE}
 # Study 1 CONSORT Adherence data
-adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=450039881#gid=450039881", "CONSORT Adherence coding") 
+# adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=450039881#gid=450039881", "CONSORT Adherence coding") 
+# 
+# head(adherence_data)
+# # View(adherence_data)
+# 
+# adherence_data <- adherence_data %>% mutate(`Study no.` = unlist(`Study no.`))
+# 
+# write_csv(adherence_data, "Data/adherence_data.csv")
 
-head(adherence_data)
-# View(adherence_data)
+full_text_screening_temp_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/full_text_screening_temp.csv" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
+
+full_text_screening_temp_url <- read_csv(full_text_screening_temp_url) %>%
+  as_tibble()
+
+head(full_text_screening_temp)
+
 names(adherence_data)
 ```
 
