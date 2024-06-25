@@ -1,0 +1,1601 @@
+---
+title: "Data Analysis: CONSORT Adherence Among Behavioural Addiction RCTs"
+format: 
+  html:
+    toc: true
+    code-fold: true
+    code-summary: "Show code"
+editor: visual
+author: "Rob Heirene"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+## Load required packages
+
+Load in packages using `groundhog` to ensure consistency of the versions used here:
+
+```{r output=FALSE, warning = FALSE, messages=FALSE}
+# Install and load the groundhog package to ensure consistency of the package versions used here:
+# install.packages("groundhog") # Install
+
+library(groundhog) # Load
+
+# List desired packages:
+packages <- c('tidyverse', # Clean, organise, and visualise data
+              'kableExtra', # Make tables
+              'formattable', #  Add visualisations to tables
+              'gt', # Alternative table options
+              'gtExtras', # Add colours to gt tables
+              'gtsummary', # Create summary tables
+              'scales', # Allows for the removal of scientific notation in axis labels
+              'plotly', # Add interactive elements to figures
+              'htmlwidgets', # Make plotly plots HTML format
+              'ggrain', # Make rain cloud plots
+              'waffle', # make waffle plots for proportions
+              'networkD3', # Make Sankey plots to show relationships
+              'patchwork', # Join plots in multipanel layouts
+              'pwr', # Check statistical power
+              'car', # Perform ANCOVA stats tests
+              'rstatix', # Perform ANCOVA stats tests
+              'ggpubr', # Plots for linearity checks 
+              'broom', # Print summaries of statistical test outputs
+              'psych', # get detailed summary figures to Supplement statistical tests
+              'sysfonts', # Special fonts for figures
+              'showtext', # Special fonts for figures
+              'ggstatsplot', # Plots with statistical outputs
+              'janitor', # Make column names consistent format
+              'caret', # Compute model performance indices
+              'sessioninfo', # Detailed session info for reproducibility
+              "osfr",
+              "readxl",
+              "googlesheets4",# Access data from Google sheets
+              "Gmisc", # Produce prisma flow diagram
+              'grid', # Produce prisma flow diagram
+              "glue", # Produce prisma flow diagram
+              "httpuv", # supports access to Google sheets
+              "irr", # Compute interrater reliability stats
+              "apa", # print test results in apa format
+              "apaTables", # print test results in apa format
+              "ggh4x", # truncate graph axis lines
+              "truncnorm" # Generate normally distributed data with limits
+)
+# Load desired package with versions specific to project start date:
+groundhog.library(packages, "2024-05-29")
+```
+
+## Setup presentation & graph specifications
+
+Set up a standard theme for plots/data visualisations:
+
+```{r message = FALSE, warning = FALSE}
+# Load new font for figures/graphs
+font_add_google("Poppins")
+font_add_google("Reem Kufi", "Reem Kufi")
+font_add_google("Share Tech Mono", "techmono")
+windowsFonts(`Segoe UI` = windowsFont('Segoe UI'))
+showtext_auto()
+showtext_auto(enable = TRUE)
+
+# Save new theme for figures/graphs.This will determine the layout, presentation, font type and font size used in all data visualisations presented here:
+plot_theme<- theme_classic() +
+  theme(
+    text=element_text(family="Poppins"),
+    plot.title = element_text(hjust = 0.5, size = 16),
+          plot.subtitle = element_text(hjust = 0.5, size = 13),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 12),
+    plot.caption = element_text(size = 12),
+    legend.title=element_text(size=12), 
+    legend.text=element_text(size=10)
+        ) 
+```
+
+11# Screening data
+
+## Load data from Google Sheets
+
+We'll first loading two datasheets: one for title and abstract screening and one for full text screening:
+
+```{r message = FALSE, warning = FALSE, results=FALSE}
+# Title and abstract screening data:
+title_abstract_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=34341577#gid=34341577", "T&A Screening FINAL")  %>%
+as_tibble() 
+
+head(title_abstract_screening_temp)
+
+# Fulltext screening data:
+full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
+as_tibble() 
+
+head(full_text_screening_temp)
+
+```
+
+## Clean & Prepare Data
+
+Let's clean and prepare this data for analysis, starting with the title and abstract screening dataset:
+
+```{r message = FALSE, warning = FALSE}
+title_abstract_screening  <-  title_abstract_screening_temp %>%
+ clean_names() %>%
+filter(study_no != "remove")  
+# View(title_abstract_screening) # check updated dataset
+```
+
+Now the full text screening dataset:
+
+```{r message = FALSE, warning = FALSE}
+full_text_screening  <-  full_text_screening_temp %>%
+ clean_names() %>%
+filter(study_no != "remove")  %>% # Remove the row separating the old and new samples
+select(-x11) # Remove empty column that occurs as a result of two merged columns becoming one when loaded into R.
+
+# View(full_text_screening) # check updated dataset
+```
+
+## Inter-coder reliability
+
+In our preregistration, we stated the following:
+
+> For transparency, we will report the levels of inter-researcher consistency in the selection process using Krippendorf’s alpha. Specifically, we will use the “irr” R package and associated kripp.alpha() function to compute Krippendorf’s alpha for the entire sample of title and abstract and full-text screening decisions.
+
+Let's go ahead and calculate Krippendorf's alpha for title and abstract screening and then full text screening.
+
+```{r message = FALSE, warning = FALSE}
+ 
+t_a_screening_votes <- title_abstract_screening %>%
+select(person_1_screen, person_2_screen) %>%
+t()
+
+t_a_krip<-  kripp.alpha(t_a_screening_votes)
+
+
+ft_screening_votes <- full_text_screening %>%
+select(person_1_rating, person_2_rating) %>%
+  mutate(person_1_rating = as.character(person_1_rating)) %>%
+mutate(person_2_rating = as.character(person_2_rating)) %>%
+t()
+
+ft_krip<-  kripp.alpha(ft_screening_votes)
+
+```
+
+Provide a statement summarising these test outputs for directly inclusion in manuscript:
+
+-   At title and abstract level, we achieved a Krippendorf's $/alpha$ level of `r round(t_a_krip$value,3)` (`r t_a_krip$subjects` articles, `r t_a_krip$raters` raters). At full- text level, we achieved a Krippendorf's $/alpha$ level of `r round(ft_krip$value,3)` (`r ft_krip$subjects` articles, `r ft_krip$raters` raters).
+
+## Flowchart
+
+Now we have loaded and cleaned the screening spreadsheets, we can use this to create a computationally reproducible flowchart of the studies screening and selection process.
+
+To do this, we'll need to isolate key figures, like the number of studies assessed and included at title and abstract level and the full text screening level. Let's create these figures:
+
+```{r message = FALSE, warning = FALSE}
+
+# Number of articles screened at title and abstract level:
+n_total_title_abstract  <-  nrow(title_abstract_screening)
+
+# Number of articles included at title and abstract level:
+n_included_title_abstract  <-  title_abstract_screening %>%
+filter(full_text_screen == "TRUE") %>% nrow()
+
+# Number of articles excluded at title and abstract level:
+n_excluded_title_abstract  <-  title_abstract_screening %>%
+filter(full_text_screen == "FALSE") %>% nrow()
+
+# quickly check the included and excluded articles sum to the total of all articles:
+# n_total_title_abstract
+# n_excluded_title_abstract+n_included_title_abstract
+
+# Number of articles screened at full text level (should be the same as above, but good to check):
+n_total_full_text  <-  full_text_screening %>% nrow()
+
+# Number of articles included at full text screening level:
+n_included_full_text  <-  full_text_screening %>%
+filter(include_final_decision  == 1) %>% nrow()
+
+# Number of articles excluded at full text screening level:
+n_excluded_full_text  <-  full_text_screening %>%
+filter(include_final_decision  == 0) %>% nrow()
+
+# Reasons for exclusion at full text screening level:
+full_text_exclusion_reasons<- full_text_screening %>%
+filter(include_final_decision  == 0) %>%  
+  count(reason_for_exlcusion_code) %>%
+  rename(reason = 1) %>%
+  arrange(desc(n))
+
+```
+
+Now use the data from above to develop a PRISMA flowchart:
+
+```{r message = FALSE, warning = FALSE}
+svg("Figures/flowchart.svg", height = 7, width = 7)
+
+
+TxtGp <- getOption("Poppins", default = gpar(fontfamily = "Poppins", fontsize = 8))
+
+TxtGp2 <- getOption("Poppins", default = gpar(fontfamily = "Poppins", fontsize = 10))
+
+grid.newpage()
+
+
+# box1
+box1 <-boxGrob(y = 0.85,
+               x = 0.25,
+               width = 0.4,
+        txt_gp = TxtGp2,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Articles identified from:",
+                      "PubMed (n = {no1})",
+                      "Journal of Gambling Issues (n = {no2})",
+                           no1 = n_total_title_abstract-2,
+                           no2 = "2",
+                           .sep = "\n"))
+
+# Box 2
+box2 <-boxGrob(y = 0.85,
+               x = 0.77,
+               width = 0.35,
+               just = "left",
+        txt_gp = TxtGp,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Articles removed before screening: 0"))
+
+box1
+box2
+connectGrob(box1, box2, "horizontal"
+            # , lty_gp = gpar(lwd = .5)
+            )
+
+# Box 3
+box3 <-boxGrob(y = 0.65,
+               x = 0.25,
+               width = 0.4,
+        txt_gp = TxtGp2,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Articles screened at title",
+                      "& abstract level (n = {no1})",
+                           no1 = n_total_title_abstract,
+                           .sep = "\n"))
+
+box3
+
+connectGrob(box1, box3, "vertical")
+# Box 4
+box4 <-boxGrob(y = 0.65,
+               x = 0.77,
+               width = 0.35,
+               just = "left",
+        txt_gp = TxtGp,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Articles excluded (n = {no1})",
+                           no1 = n_excluded_title_abstract,
+                           .sep = "\n"))
+
+
+box4
+connectGrob(box3, box4, "horizontal")
+
+# Box 5
+box5 <-boxGrob(y = 0.37,
+               x = 0.25,
+               width = 0.4,
+        txt_gp = TxtGp2,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Articles screened at full",
+                      "text level (n = {no1})",
+                           no1 = n_total_full_text,
+                           .sep = "\n"))
+
+box5
+
+connectGrob(box3, box5, "vertical")
+
+
+# Box 6
+box6 <-boxGrob(y = 0.37,
+               x = 0.77,
+               width = 0.35,
+               just = "left",
+        txt_gp = TxtGp,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Articles excluded with reasons:",
+                           "- {reason1} = {no1}",
+                           "- {reason2} = {no2}",
+                           "- {reason3} = {no3}",
+                           "- {reason4} = {no4}",
+                           "- {reason5} = {no5}",
+                           "- {reason6} = {no6}",
+                           "- {reason7} = {no7}",
+                           "Total: n = {tot1}",
+                           reason1 = full_text_exclusion_reasons[1,1],
+                           no1 = full_text_exclusion_reasons[1,2],
+                           reason2 = full_text_exclusion_reasons[2,1],
+                           no2 = full_text_exclusion_reasons[2,2],
+                           reason3 = full_text_exclusion_reasons[3,1],
+                           no3 = full_text_exclusion_reasons[3,2],
+                           reason4 = full_text_exclusion_reasons[4,1],
+                           no4 = full_text_exclusion_reasons[4,2],
+                           reason5 = full_text_exclusion_reasons[5,1],
+                           no5 = full_text_exclusion_reasons[5,2],
+                           reason6 = full_text_exclusion_reasons[6,1],
+                           no6 = full_text_exclusion_reasons[6,2],
+                           reason7 = full_text_exclusion_reasons[7,1],
+                           no7 = full_text_exclusion_reasons[7,2],
+                           tot1 = n_excluded_full_text,
+                           .sep = "\n"))
+
+box6
+connectGrob(box5, box6, "horizontal")
+# Box 7
+box7 <-boxGrob(y = 0.17,
+               x = 0.25,
+               width = 0.4,
+        txt_gp = TxtGp2,
+        # box_gp = gpar(fill = "#ccc6e2"), 
+                      glue("Studies included in review",
+                      "(n = {no1})",
+                           no1 = n_included_full_text,
+                           .sep = "\n"))
+
+box7
+
+connectGrob(box5, box7, "vertical")
+
+dev.off()
+```
+
+# Abstract data
+
+## Load data from Google Sheets
+
+```{r message = FALSE, warning = FALSE, results=FALSE}
+# Study 1 abstract adherence data
+abstract_adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=674745925#gid=674745925", "Abstract - CONSORT adherence coding") 
+
+head(abstract_adherence_data)
+# View(abstract_adherence_data)
+```
+
+## Clean & Prepare Data
+
+```{r message = FALSE, warning = FALSE}
+Study1_abstract_adherence_data  <-  abstract_adherence_data %>%
+ clean_names() %>%
+filter(study_no != "remove")  %>% # filter out row separating older and newer sample
+  mutate(x3_1_methods_participants_participants_setting = word(x3_1_methods_participants_participants_setting, 1)) %>% # Isolate single code from values
+  mutate(x3_2_methods_interventions = word(x3_2_methods_interventions, 1))  # Isolate single code from values
+
+# View(Study1_abstract_adherence_data) # check recoding
+```
+
+Develop some tidy item names:
+
+```{r message = FALSE, warning = FALSE}
+abstract_items_data_frame = data.frame(Item = c(
+    "x1_author_contact_details"                     
+    ,"x2_trial_design"                               
+    ,"x3_1_methods_participants_participants_setting"
+    ,"x3_2_methods_interventions"                    
+    ,"x3_3_methods_objective"                        
+    ,"x3_4_methods_outcomes"                         
+    ,"x3_5_methods_randomisation"                     
+    ,"x3_6_methods_blinding_masking"                 
+    ,"x4_1_results_number_randomised"                
+    ,"x4_2_results_recruitment_trial_status"                      
+    ,"x4_3_numbers_analysed"                         
+    ,"x4_4_results_outcomes"                         
+    ,"x4_5_results_harms"                            
+    ,"x5_conclusion"                                 
+    ,"x6_trial_registration",                        
+    "x7_funding"), 
+    Item_nice = c(
+    "Author contact details",
+    "Trial design",
+    "Methods - sample & setting",
+    "Methods - interventions",
+    "Methods - objective",
+    "Methods - outcomes",
+    "Methods - randomisation", 
+    "Methods - blinding",
+    "Results - number analysed",
+    "Results - recruitment",
+    "Results - no. randomised",
+    "Results - outcomes",
+    "Results - harms",
+    "Conclusion",
+    "Trial registration",
+    "Funding"))
+```
+
+Table outcomes:
+
+```{r message = FALSE, warning = FALSE}
+Study1_abstract_adherence_data %>%
+pivot_longer(cols = 4:19, names_to = "Item", values_to = "value") %>%
+  filter(!is.na(value)) %>%
+  filter(value != "N/A") %>%
+  count(Item, value) %>%
+    # Ensure all combinations of Item and value exist
+  group_by(Item) %>% 
+  mutate(percent = round(n/sum(n)*100,2)) %>%
+  mutate(value = factor(value, levels = c("yes", "no"))) %>%
+  pivot_wider(names_from = value, values_from = c(n, percent)) %>% 
+  mutate(across(everything(), ~replace_na(.x, 0))) %>% 
+   full_join(abstract_items_data_frame) %>%
+  ungroup() %>%
+  select(-Item, -percent_no) %>%
+  rename(Item = Item_nice) %>%
+  select(Item, everything()) %>%
+gt() %>% 
+   cols_align(
+    align = "right",
+    columns = vars(Item)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:4)) %>% 
+gt_color_rows(percent_yes, palette = c("#F0FFF7", "#289998"))  %>%
+  cols_label(percent_yes ~ "Percent/n reported",
+             n_no ~ "Not reported",
+             n_yes ~ "Reported") %>%
+ tab_header(
+    title = md("**Table 1. Number & percentage of CONSORT items reported in study abstracts**"))  %>%
+  tab_spanner(
+    label = "Adherence",
+    columns = 2:4) %>%
+    tab_options(data_row.padding = px(2.7)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Item)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:4))
+
+```
+
+Compute the mean and median percentage across all abstract items:
+
+```{r message = FALSE, warning = FALSE}
+Study1_abstract_adherence_data %>%
+pivot_longer(cols = 4:19, names_to = "Item", values_to = "value") %>%
+  filter(!is.na(value)) %>%
+  filter(value != "N/A")%>%
+  count(Item, value) %>%
+    # Ensure all combinations of Item and value exist
+  group_by(Item) %>%
+  mutate(percent = round(n/sum(n)*100,2)) %>%
+  mutate(value = factor(value, levels = c("yes", "no"))) %>%
+  pivot_wider(names_from = value, values_from = c(n, percent)) %>% 
+  mutate(across(everything(), ~replace_na(.x, 0))) %>%
+  ungroup() %>%
+summarise(
+  mean(percent_yes),
+  median(percent_yes)
+)
+```
+
+# CONSORT Data
+
+### Load data from Google Sheets
+
+```{r message = FALSE, warning = FALSE, results=FALSE}
+# Study 1 CONSORT Adherence data
+adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=450039881#gid=450039881", "CONSORT Adherence coding") 
+
+head(adherence_data)
+# View(adherence_data)
+names(adherence_data)
+```
+
+### Clean & Prepare Data
+
+```{r message = FALSE, warning = FALSE}
+
+colnames(adherence_data)[c(10:46)] <- paste('Item', colnames(adherence_data)[c(10:46)], sep = '_') # add item prefix to all consort items  to make later selection easier
+
+Study1_CONSORT_adherence_data  <-  adherence_data %>%
+  mutate(`Item_14b - Results` = ifelse(
+    `Item_14b - Results` %in% c("n/NA?", "y/NA?"), 
+    "n/a",
+    `Item_14b - Results`)) %>% # Fix temporary coding
+ clean_names()  %>%
+  # Make names of the behavioural addictions consistent:
+  mutate(behavioural_addiction = case_when(behavioural_addiction == 'Online gaming' ~ "Gaming",
+                                           behavioural_addiction == 'online gaming' ~ "Gaming",
+                                           TRUE ~ behavioural_addiction)) %>%
+filter(study_no != "remove") %>%  # filter out row separating older and newer sample
+  mutate(study_no = as.double(study_no)) 
+# View(Study1_CONSORT_adherence_data) # check recoding
+```
+
+## Produce summary figures
+
+In our preregistration we stated the following:
+
+> The following summary outcomes will be quantitatively synthesised and require no criteria to be met:
+>
+> -   Mean, standard deviation, median, and range of CONSORT items reported for the entire sample of studies
+>
+> -   The total number of studies that report each CONSORT item
+>
+> Provided there are ≥2 studies for each group/category, the following summary outcomes will also be reported:
+>
+> -   Mean, standard deviation, median, and range of CONSORT items reported by studies published in each journal
+>
+> -   Mean, standard deviation, median, and range of CONSORT items reported by studies published in journals that do *and* do not endorse CONSORT
+>
+> -   Mean, standard deviation, median, and range of CONSORT items reported by gambling and gaming studies.
+>
+> -   Mean, standard deviation, median, and range of CONSORT items reported by studies within each year of publication present in the sample (2011-2020). \[*Note that we later extended this to early 2024*\]
+
+Let's focus on computing the above outcomes.
+
+### Summary for the entire sample of studies
+
+> -   Mean, standard deviation, median, and range of CONSORT items reported for the entire sample of studies
+
+We will now calculate these figures, as well as the percentage of CONSORT items reported in each study as there are a varying number of potentially eligible items across studies, depending on the study design (for example, item 11b related to blinding and the similarity between interventions groups is only relevant if blinding was used).
+
+Start by putting the data in a format where we can calculate these values as this will be useful for analyses later on:
+
+```{r message = FALSE, warning = FALSE}
+
+# Specify the columns to apply our percentage calculation to:
+columns_to_apply = c('item_1a_title_abst',
+                                     'item_1b_title_abst', 
+                                     'item_2a_intro',
+                                     'item_2b_intro',
+                                     'item_3a_methods',
+                                     'item_3b_methods',
+                                     'item_4a_methods',
+                                     'item_4b_methods',
+                                     'item_5_methods',
+                                     'item_6a_methods',
+                                     'item_6b_methods',
+                                     'item_7a_methods',
+                                     'item_7b_methods',
+                                     'item_8a_methods',
+                                     'item_8b_methods',
+                                     'item_9_methods',
+                                     'item_10_methods',
+                                     'item_11a_methods',
+                                     'item_11b_methods',
+                                     'item_12a_methods',
+                                     'item_12b_methods',
+                                     'item_13a_results',
+                                     'item_13b_results',
+                                     'item_14a_results',
+                                     'item_14b_results',
+                                     'item_15_results',
+                                     'item_16_results',
+                                     'item_17a_results',
+                                     'item_17b_results',
+                                     'item_18_results',
+                                     'item_19_results',
+                                     'item_20_discussion',
+                                     'item_21_discussion',
+                                     'item_22_discussion',
+                                     'item_23_other_info',
+                                     'item_24_other_info',
+                                     'item_25_other_info')
+
+# Develop some nicely written version of the items for use as we go through:
+items_data_frame = data.frame(Item = c(columns_to_apply), 
+Item_nice = c(
+    "1a - Title & abstract",
+    "1b - Title & abstract",
+    "2a - Introduction",
+    "2b - Introduction",
+    "3a - Methods",
+    "3b - Methods",
+    "4a - Methods",
+    "4b - Methods",
+    "5 - Methods",
+    "6a - Methods",
+    "6b - Methods",
+    "7a - Methods",
+    "7b - Methods",
+    "8a - Methods",
+    "8b - Methods",
+    "9 - Methods",
+    "10 - Methods",
+    "11a - Methods",
+    "11b - Methods",
+    "12a - Methods",
+    "12b - Methods",
+    "13a - Results",
+    "13b - Results",
+    "14a - Results",
+    "14b - Results",
+    "15 - Results",
+    "16 - Results",
+    "17a - Results",
+    "17b - Results",
+    "18 - Results",
+    "19 - Results",
+    "20 - Discussion",
+    "21 - Discussion",
+    "22 - Discussion",
+    "23 - Other information",
+    "24 - Other information",
+    "25 - Other information"))
+
+CONSORT_adherence_data_with_study_totals  <-   Study1_CONSORT_adherence_data %>%
+   # Recode y/n/na values:
+     mutate_at(vars(c(columns_to_apply)),
+            ~case_when(
+              . == "y" ~ 1,
+              . == "n" ~ 0,
+              . == "n/a" ~ NA,
+              TRUE ~ as.numeric(.)
+            )) %>%
+   mutate(total_adherence_absolute = rowSums(select(., all_of(columns_to_apply)), na.rm = TRUE))  %>%
+mutate(percent_reported = rowSums(select(., all_of(columns_to_apply)) == 1, na.rm = TRUE) /
+                              rowSums(!is.na(select(., all_of(columns_to_apply)))) * 100)
+
+
+# Check recoding was accurate:
+# CONSORT_adherence_data_with_study_totals %>%
+#      select(10:45, total_adherence_absolute, percent_reported) %>%
+#  View()
+```
+
+Now compute and table the required values:
+
+```{r message = FALSE, warning = FALSE}
+
+tbL_summary_all  <-  CONSORT_adherence_data_with_study_totals %>%
+   summarise(
+    mean_total_adherence_absolute = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence_absolute = sd(total_adherence_absolute, na.rm = TRUE),
+    median_total_adherence_absolute = median(total_adherence_absolute, na.rm = TRUE),
+    min_total_adherence_absolute = min(total_adherence_absolute, na.rm = TRUE),
+    max_total_adherence_absolute = max(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    median_percent_reported = median(percent_reported, na.rm = TRUE),
+    min_percent_reported = min(percent_reported, na.rm = TRUE),
+    max_percent_reported = max(percent_reported, na.rm = TRUE),
+    N = n()
+  ) %>% 
+  mutate(
+    mean_sd = paste(round(mean_total_adherence_absolute, 2), " (",     round(sd_total_adherence_absolute, 2), ")", sep = ""),
+     mean_percent_reported = round(mean_percent_reported, 2),
+    median_min_max = paste(median_total_adherence_absolute, " (", min_total_adherence_absolute, "-", max_total_adherence_absolute, ")", sep = "")
+  ) %>%
+  mutate(Characteristic = as.character("Overall")) %>%
+  select(Characteristic,
+         N,
+         "M (SD)" = mean_sd, 
+         "Mdn (range)" = median_min_max,
+         "M % reported" = mean_percent_reported)
+  
+  
+  gt(tbL_summary_all) %>%
+  # gt_plt_bar_pct(
+  #   column = 4,
+  #   scaled = TRUE,
+  #   labels = TRUE,
+  #   fill = "forestgreen"
+  # )  %>% 
+   gt_color_rows(5, palette = c("#F0FFF7", "#289998"),
+                  domain = c(0, 100))  %>%
+    tab_options(data_row.padding = px(3)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Characteristic)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:5)) 
+
+
+```
+
+### Behavioural addiction
+
+```{r message = FALSE, warning = FALSE}
+
+tbL_summary_addiction  <-  CONSORT_adherence_data_with_study_totals %>%
+  group_by(behavioural_addiction) %>%
+   summarise(
+    mean_total_adherence_absolute = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence_absolute = sd(total_adherence_absolute, na.rm = TRUE),
+    median_total_adherence_absolute = median(total_adherence_absolute, na.rm = TRUE),
+    min_total_adherence_absolute = min(total_adherence_absolute, na.rm = TRUE),
+    max_total_adherence_absolute = max(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    median_percent_reported = median(percent_reported, na.rm = TRUE),
+    min_percent_reported = min(percent_reported, na.rm = TRUE),
+    max_percent_reported = max(percent_reported, na.rm = TRUE),
+    N = n()
+  ) %>% 
+  arrange(desc(mean_total_adherence_absolute)) %>%
+  mutate(
+    mean_sd = paste(round(mean_total_adherence_absolute, 2), " (",     round(sd_total_adherence_absolute, 2), ")", sep = ""),
+     mean_percent_reported = round(mean_percent_reported, 2),
+    median_min_max = paste(median_total_adherence_absolute, " (", min_total_adherence_absolute, "-", max_total_adherence_absolute, ")", sep = "")
+  ) %>%
+  select(Characteristic = behavioural_addiction, 
+         N,
+         "M (SD)" = mean_sd, 
+         "Mdn (range)" = median_min_max,
+         "M % reported" = mean_percent_reported)
+
+  gt(tbL_summary_addiction) %>%
+  # gt_plt_bar_pct(
+  #   column = 4,
+  #   scaled = TRUE,
+  #   labels = TRUE,
+  #   fill = "forestgreen"
+  # )  %>% 
+   gt_color_rows(5, palette = c("#F0FFF7", "#289998"),
+                  domain = c(0, 100))  %>%
+    tab_options(data_row.padding = px(3)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Characteristic)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:5)) 
+
+
+```
+
+### Funding source
+
+```{r message = FALSE, warning = FALSE}
+
+tbL_summary_funding <-  CONSORT_adherence_data_with_study_totals %>%
+  group_by(funding_source) %>%
+   summarise(
+    mean_total_adherence_absolute = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence_absolute = sd(total_adherence_absolute, na.rm = TRUE),
+    median_total_adherence_absolute = median(total_adherence_absolute, na.rm = TRUE),
+    min_total_adherence_absolute = min(total_adherence_absolute, na.rm = TRUE),
+    max_total_adherence_absolute = max(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    median_percent_reported = median(percent_reported, na.rm = TRUE),
+    min_percent_reported = min(percent_reported, na.rm = TRUE),
+    max_percent_reported = max(percent_reported, na.rm = TRUE),
+    N = n()
+  ) %>% 
+  arrange(desc(mean_total_adherence_absolute)) %>%
+  mutate(
+    mean_sd = paste(round(mean_total_adherence_absolute, 2), " (",     round(sd_total_adherence_absolute, 2), ")", sep = ""),
+     mean_percent_reported = round(mean_percent_reported, 2),
+    median_min_max = paste(median_total_adherence_absolute, " (", min_total_adherence_absolute, "-", max_total_adherence_absolute, ")", sep = "")
+  ) %>%
+  select(Characteristic = funding_source, 
+         N,
+         "M (SD)" = mean_sd, 
+         "Mdn (range)" = median_min_max,
+         "M % reported" = mean_percent_reported) 
+
+
+  gt(tbL_summary_funding) %>%
+  # gt_plt_bar_pct(
+  #   column = 4,
+  #   scaled = TRUE,
+  #   labels = TRUE,
+  #   fill = "forestgreen"
+  # )  %>% 
+   gt_color_rows(5, palette = c("#F0FFF7", "#289998"),
+                  domain = c(0, 100))  %>%
+    tab_options(data_row.padding = px(3)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Characteristic)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:5)) 
+
+
+```
+
+### Journal data
+
+> -   Mean, standard deviation, median, and range of CONSORT items reported by studies published in each journal
+
+For this, will need to use the abstract screening data that contains the journal names.
+
+First we will create a table that includes the counts and percentages for the types of journals/outlets the articles were published in:
+
+```{r message = FALSE, warning = FALSE}
+# Study 1 abstract adherence data
+Study1_abstract_adherence_data %>%
+  mutate(study_no = as.double(study_no)) %>%
+  select(title = title, journal, study_no) %>%
+  full_join(Study1_CONSORT_adherence_data) %>% 
+  count(journal) %>%
+  arrange(desc(n)) %>%
+  mutate(Percent = round((n/sum(n))*100,2)) %>% 
+  rename(Journal = 'journal') %>% 
+  gt() %>%
+   tab_header(
+    title = md("**Outlets for articles**"))
+```
+
+How many journals are there in total:
+
+```{r message = FALSE, warning = FALSE}
+
+journal_count  <- Study1_abstract_adherence_data %>%
+  mutate(study_no = as.double(study_no)) %>%
+  select(title = title, journal, study_no) %>%
+  full_join(Study1_CONSORT_adherence_data) %>%
+  select(journal) %>% 
+  n_distinct() 
+```
+
+Okay, so our `r nrow(Study1_abstract_adherence_data)` papers were published across `r journal_count` different outlets.
+
+Next, we'll produce adherence scores for the journal with two or more articles in:
+
+```{r message = FALSE, warning = FALSE}
+# First extracted the journal names for those with two or more publications:
+journals_two_or_more <- Study1_abstract_adherence_data %>% # (we need this for the cleanest journal names)
+  mutate(study_no = as.double(study_no)) %>%
+  select(title = title, journal, study_no) %>%
+  full_join(Study1_CONSORT_adherence_data) %>%
+  count(journal) %>%
+  arrange(desc(n)) %>%
+  filter(n >1) %>%
+  pull(journal)
+
+# Now use these Journal names to filter in the articles published in these journals and provide summary scores:
+# Study 1 abstract adherence data
+tbL_summary_journal  <-  Study1_abstract_adherence_data %>%
+  mutate(study_no = as.double(study_no)) %>%
+  select(title = title, journal, study_no) %>% 
+  full_join(CONSORT_adherence_data_with_study_totals, join_by(title)) %>%
+  filter(journal %in% journals_two_or_more) %>% # Include only studies published in journals that have two or more articlles in the sample
+  group_by(journal) %>%
+   summarise(
+    mean_total_adherence_absolute = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence_absolute = sd(total_adherence_absolute, na.rm = TRUE),
+    median_total_adherence_absolute = median(total_adherence_absolute, na.rm = TRUE),
+    min_total_adherence_absolute = min(total_adherence_absolute, na.rm = TRUE),
+    max_total_adherence_absolute = max(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    median_percent_reported = median(percent_reported, na.rm = TRUE),
+    min_percent_reported = min(percent_reported, na.rm = TRUE),
+    max_percent_reported = max(percent_reported, na.rm = TRUE),
+    N = n()
+  ) %>% 
+  arrange(desc(mean_total_adherence_absolute)) %>%
+  mutate(
+    mean_sd = paste(round(mean_total_adherence_absolute, 2), " (",     round(sd_total_adherence_absolute, 2), ")", sep = ""),
+     mean_percent_reported = round(mean_percent_reported, 2),
+    median_min_max = paste(median_total_adherence_absolute, " (", min_total_adherence_absolute, "-", max_total_adherence_absolute, ")", sep = "")
+  ) %>%
+  select(Characteristic = journal, 
+         N,
+         "M (SD)" = mean_sd, 
+         "Mdn (range)" = median_min_max,
+         "M % reported" = mean_percent_reported)
+
+  gt(tbL_summary_journal) %>%
+  # gt_plt_bar_pct(
+  #   column = 4,
+  #   scaled = TRUE,
+  #   labels = TRUE,
+  #   fill = "forestgreen"
+  # )  %>% 
+   gt_color_rows(5, palette = c("#F0FFF7", "#289998"))  %>%
+    tab_options(data_row.padding = px(3)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Characteristic)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:5)) 
+
+```
+
+### CONSORT endorsement
+
+In our preregistration, we stated the following:
+
+> -   Provided there are ≥ 51 studies published in journals that do endorse CONSORT and ≥ 50 studies in journals that do not, we will conduct an independent samples Welch’s t-test to compare the mean number of reported items between the two journal types (i.e., endorse CONSORT vs. does not endorse CONSORT). The required sample size is based on a power calculation for a one-tailed t-test (alpha = 0.05, power = 0.8, medium effect size \[d\] = 0.5) using G\*Power software version 3.1 (Faul et al., 2009), which indicated that 51 studies per group would be required. However, our preliminary searches indicate that we are unlikely to achieve these group sizes.
+
+We know from our analyses above that we have not reached more than 51 articles published in CONSORT endorsing journals and 51 articles published in non-CONSORT endorsing journals, so we'll simply produce some summary figures, including mean difference with SD.
+
+The CONSORT endorsement data is actually in the full-text screening spreadsheet (minor waste of time doing it for all articles screened at this level), so we'll load this in and then keep only the studies included in the review.
+
+```{r message = FALSE, warning = FALSE}
+tbl_summary_consort  <-   CONSORT_adherence_data_with_study_totals %>%
+left_join(full_text_screening, join_by(title)) %>%
+  mutate(consort = case_when(
+    consort == TRUE ~ "Endorses CONSORT",
+    consort == FALSE ~ "No endorsement"
+  )) %>%
+group_by(consort) %>%
+   summarise(
+    mean_total_adherence_absolute = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence_absolute = sd(total_adherence_absolute, na.rm = TRUE),
+    median_total_adherence_absolute = median(total_adherence_absolute, na.rm = TRUE),
+    min_total_adherence_absolute = min(total_adherence_absolute, na.rm = TRUE),
+    max_total_adherence_absolute = max(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    median_percent_reported = median(percent_reported, na.rm = TRUE),
+    min_percent_reported = min(percent_reported, na.rm = TRUE),
+    max_percent_reported = max(percent_reported, na.rm = TRUE),
+    N = n()
+  ) %>% 
+  arrange(desc(mean_total_adherence_absolute)) %>%
+  mutate(
+    mean_sd = paste(round(mean_total_adherence_absolute, 2), " (",     round(sd_total_adherence_absolute, 2), ")", sep = ""),
+     mean_percent_reported = round(mean_percent_reported, 2),
+    median_min_max = paste(median_total_adherence_absolute, " (", min_total_adherence_absolute, "-", max_total_adherence_absolute, ")", sep = "")
+  ) %>%
+  select(Characteristic = consort, 
+         N,
+         "M (SD)" = mean_sd, 
+         "Mdn (range)" = median_min_max,
+         "M % reported" = mean_percent_reported)
+
+  gt(tbl_summary_consort) %>%
+  # gt_plt_bar_pct(
+  #   column = 4,
+  #   scaled = TRUE,
+  #   labels = TRUE,
+  #   fill = "forestgreen"
+  # )  %>% 
+   gt_color_rows(5, palette = c("#F0FFF7", "#289998"))  %>%
+    tab_options(data_row.padding = px(3)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Characteristic)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:5)) 
+```
+
+Compute mean difference between journals that do and do not endorse consort:
+
+```{r message = FALSE, warning = FALSE}
+ 
+# Summarise Adherence rates for each consort group:
+consort_endorse_summary_stats <- CONSORT_adherence_data_with_study_totals %>%
+  left_join(full_text_screening, join_by(title)) %>%
+  mutate(consort = case_when(
+    consort == TRUE ~ "Endorses CONSORT",
+    consort == FALSE ~ "No endorsement"
+  )) %>%
+  group_by(consort) %>%
+  summarise(
+    mean_total_adherence = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence = sd(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    n = n() # capture the sample size for each group
+  ) %>%
+  ungroup()
+
+# Calculate the difference in means and pooled standard deviation as an approximation
+difference_stats <- consort_endorse_summary_stats %>%
+  summarise(
+    difference_mean_total_adherence = diff(mean_total_adherence),
+    pooled_sd_total_adherence = sqrt(((n[1] - 1) * sd_total_adherence[1]^2 + (n[2] - 1) * sd_total_adherence[2]^2) / (n[1] + n[2] - 2)),
+    difference_mean_percent_reported = diff(mean_percent_reported),
+    pooled_sd_percent_reported = sqrt(((n[1] - 1) * sd_percent_reported[1]^2 + (n[2] - 1) * sd_percent_reported[2]^2) / (n[1] + n[2] - 2))
+  )
+
+# View the calculated differences and pooled SDs
+difference_stats %>%
+  pivot_longer(cols = everything(),
+               names_to = "Metric",
+               values_to = "Value") %>%
+  gt()
+
+```
+
+Studies published in journals endorsing CONSORT had a slightly lower mean percentage of relevant items reported compared to studies published in non-endorsing journals (*M*~difference~ = -`r difference_stats %>% select(difference_mean_percent_reported ) %>% mutate(difference_mean_percent_reported  = round(difference_mean_percent_reported , 2)) %>% pull()`, *SD*~pooled~ = `r difference_stats %>% select(pooled_sd_percent_reported ) %>% mutate(pooled_sd_percent_reported  = round(pooled_sd_percent_reported , 2)) %>% pull()`).
+
+This outcome is quite unexpected (Journals that do not endorse consort scored higher than those that do on adherence),although the difference is not very large. Still, I'm going to explore the data here and check for any potential errors/explanations:
+
+```{r message = FALSE, warning = FALSE}
+
+Study1_abstract_adherence_data %>%
+  mutate(study_no = as.double(study_no)) %>%
+  select(title = title, journal, study_no) %>% 
+  full_join(CONSORT_adherence_data_with_study_totals, join_by(title)) %>%
+left_join(full_text_screening, join_by(title)) %>%
+  mutate(consort = case_when(
+    consort == TRUE ~ "Endorses CONSORT",
+    consort == FALSE ~ "No endorsement"
+  )) %>%
+group_by(consort, journal)   %>%
+summarise(
+    mean_total_adherence_absolute = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence_absolute = sd(total_adherence_absolute, na.rm = TRUE),
+    median_total_adherence_absolute = median(total_adherence_absolute, na.rm = TRUE),
+    min_total_adherence_absolute = min(total_adherence_absolute, na.rm = TRUE),
+    max_total_adherence_absolute = max(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    median_percent_reported = median(percent_reported, na.rm = TRUE),
+    min_percent_reported = min(percent_reported, na.rm = TRUE),
+    max_percent_reported = max(percent_reported, na.rm = TRUE),
+    N = n()
+  ) %>% 
+  arrange(desc(mean_total_adherence_absolute)) %>%
+  mutate(
+    mean_sd = paste(round(mean_total_adherence_absolute, 2), " (",     round(sd_total_adherence_absolute, 2), ")", sep = ""),
+     mean_percent_reported = round(mean_percent_reported, 2),
+    median_min_max = paste(median_total_adherence_absolute, " (", min_total_adherence_absolute, "-", max_total_adherence_absolute, ")", sep = "")
+  ) %>%
+  select(journal,
+         Characteristic = consort, 
+         N,
+         "M (SD)" = mean_sd, 
+         "Mdn (range)" = median_min_max,
+         "M % reported" = mean_percent_reported) %>%
+  gt()
+```
+
+### Combined outcomes
+
+```{r message = FALSE, warning = FALSE}
+
+bind_rows(tbL_summary_all,
+tbL_summary_addiction,
+tbL_summary_funding,
+tbl_summary_consort,
+tbL_summary_journal) %>%
+  gt() %>%
+   gt_color_rows(5, palette = c("#F0FFF7", "#289998"),
+                 domain = c(35, 85))  %>%
+    tab_options(data_row.padding = px(3)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Characteristic)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(2:5)) %>%
+   tab_header(
+    title = md("**Table 2. Summary of CONSORT adherence in reviewed studies**"))  %>%
+    tab_row_group(
+    label = md("_**Behavioural addiction**_"),
+    rows = 2:3) %>% # change to 1:2 when 1b added
+  tab_row_group(
+    label = md("_**Funding source**_"),
+    rows = 4:7) %>%
+   tab_row_group(
+    label = md("_**Journal endorsement**_"),
+    rows = 8:9) %>%
+  tab_row_group(
+    label = md("_**Journal**_"),
+    rows = 10:17) %>%
+    row_group_order(groups = c(NA,
+                               "_**Behavioural addiction**_",
+                             "_**Funding source**_",
+                             "_**Journal endorsement**_",
+                             "_**Journal**_")) %>%
+  tab_spanner(
+    label = "Adherence",
+    columns = 3:5) %>%
+   # cols_label(
+   #  N = md("*N*"),
+   #  'M (SD)' = md("*M* (*SD*)"),
+   #  'Mdn (range)' = md("*M* (range)"),
+   #  'Mdn % reported' = md("*Mdn* %<br>reported"),
+    # Characteristic = "") %>%
+   tab_footnote(
+    footnote = "Darker colours indicate greater adherence to CONSORT reporting guidelines.",
+    locations = cells_column_labels(columns = 5)) %>%
+    tab_footnote(
+    footnote = " Percentages calculated as number a proportion of relevant items (i.e., excluding NA values). ",
+    locations = cells_column_labels(columns = 5)) %>%
+    tab_footnote(
+    footnote = "Rates are reported for journals publishing 2 or more articles.",
+    locations = cells_group(groups = "_**Journal**_")) %>%
+  opt_footnote_marks(marks = "standard")
+  
+```
+
+### Yearly data
+
+> -   Mean, standard deviation, median, and range of CONSORT items reported by studies within each year of publication present in the sample (2011-2020). \[*Note that we later extended this to early 2024*\]
+
+We can compute the summary statistics for each year to be consistent with our preregistration, but this would probably look better as a figure/graph in the actual paper:
+
+```{r message = FALSE, warning = FALSE}
+CONSORT_adherence_data_with_study_totals %>%
+  rename(Year = date_published) %>%
+  tbl_summary(include = c(total_adherence_absolute, 
+                          percent_reported),
+              type = all_continuous() ~ "continuous2",
+              by = Year, # split table by year
+    statistic = all_continuous() ~ c(
+      "{mean} ({sd})",
+      "{median} ({min}, {max})"),
+    label  = list(total_adherence_absolute = 'Total no. items reported',
+                  percent_reported = '% of releveant items reported')) %>%
+  # add_overall() %>%
+  modify_header(label = "") %>% # update the column header
+  bold_labels() %>% 
+  modify_caption("**Summary statistics for the number of CONSORT items reported in the sample grouped by year of publication**")
+```
+
+Plot adherence over time:
+
+```{r message = FALSE, warning = FALSE, results = FALSE}
+pdf(file = "Figures/CONSORT_adherence_by_year.pdf", # The directory you want to save the file in
+    width = 6.66, # The width of the plot in inches
+    height = 3.65) # The height of the plot in inches
+
+adherence_by_year_plot_data  <-  CONSORT_adherence_data_with_study_totals %>%
+    rename(Year = date_published) %>%
+  group_by(Year) %>%
+  summarise(percent_reported_mean = mean(percent_reported),
+            SD_mean = sd(percent_reported),
+            Count = n())
+
+# create base plot:
+adherence_by_year_plot_base  <-   CONSORT_adherence_data_with_study_totals %>%
+    rename(Year = date_published) %>%
+  ggplot() +
+  geom_point(aes(x = Year, y = percent_reported), color = "grey", size = 1, position = position_dodge(width = 1)) +  
+  geom_point(data = adherence_by_year_plot_data, aes(x = Year, y = percent_reported_mean), color = "dodgerblue", size = 3) +  
+  # geom_errorbar(aes(x = Year, ymin = percent_reported_mean - SD_mean, ymax = percent_reported_mean + SD_mean), data = adherence_by_year_plot_data, width = 0.3, linewidth = 0.7) +  # Add error bars
+  geom_line(data = adherence_by_year_plot_data, aes(x = Year, y = percent_reported_mean), color = "dodgerblue", linewidth = 0.8, group = 1) + 
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 20)) +  # Set y-axis limits and breaks
+  scale_x_continuous(breaks = seq(2010, 2023, by = 1)) +  # Set x-axis breaks for alternating years
+  labs(x = "", y = "Percentage of relevant/n items reported") +  # Add axis labels and title
+  plot_theme
+
+
+# Add counts and a second axis
+adherence_by_year_plot <- adherence_by_year_plot_base + 
+  geom_bar(data = adherence_by_year_plot_data, aes(x = Year, y = Count), stat = "identity", fill = "grey") +
+  geom_text(data = adherence_by_year_plot_data, aes(x = Year, label = Count, y = Count), vjust = -0.2, size = 3, family = "Reem Kufi")+  
+  scale_y_continuous(guide = "axis_truncated",
+                     sec.axis = dup_axis(breaks = c(0,20), guide = "axis_truncated",name = "                                         No./n                                        RCTs"
+                     )  
+  ) +
+  theme(axis.line.y = element_line(),
+        axis.text.x = element_text(angle = 30, hjust = 0.6, vjust = 0.9))
+
+adherence_by_year_plot
+
+# Closing the graphical device
+dev.off() 
+
+```
+
+Show plot:
+
+```{r message = FALSE, warning = FALSE}
+adherence_by_year_plot
+```
+
+#### Exploratory analysis
+
+Let's perform and exploratory, non-preregistered analysis to look at the relationship between year of publication and consort adherence.
+
+We can start by checking the assumptions of a parametric correlational test. First, of the two variables normally distributed:
+
+```{r message = FALSE, warning = FALSE}
+#| fig-align: center
+#| fig-height: 3
+#| fig-width: 3
+
+shapiro.test(CONSORT_adherence_data_with_study_totals$percent_reported)
+shapiro.test(CONSORT_adherence_data_with_study_totals$date_published)
+
+ggqqplot(CONSORT_adherence_data_with_study_totals$percent_reported, ylab = "MPG")
+ggqqplot(CONSORT_adherence_data_with_study_totals$date_published, ylab = "MPG")
+
+```
+
+As the year is not normally distributed, we'll use a Spearman's non-Parametric test:
+
+```{r message = FALSE, warning = FALSE}
+cor_output<- cor.test(CONSORT_adherence_data_with_study_totals$percent_reported, CONSORT_adherence_data_with_study_totals$date_published, 
+                    method = "spearman")
+
+cor_output
+```
+
+Using a Spearman’s rank test (datapoints for year of publication were non-normally distributed), we found that the relationship between year of publication and CONSORT adherence was statistically significant: *R* (`r nrow(CONSORT_adherence_data_with_study_totals)-2`) = `r round(cor_output$estimate,2)`, *p* = `r round(cor_output$p.value,3)`.
+
+APA package format: `r cor_apa(cor_output, r_ci = FALSE, format = "text", info = FALSE, print = TRUE)`
+
+## Total number of studies that report each CONSORT item
+
+Now let's work on computing these figures. Again, we will compute percentages, but this time for each item across all studies:
+
+```{r message = FALSE, warning = FALSE}
+item_adherence_overall_summaries <-  Study1_CONSORT_adherence_data %>% 
+  pivot_longer(item_1a_title_abst:item_25_other_info, names_to = "Item", values_to = "value") %>%
+  count(Item, value) %>%
+  # View() #Check coding
+  pivot_wider(names_from = value, values_from = n, values_fill = list(n = 0)) %>%
+  # Compute percentages:
+   mutate('Percent/n reported' = round((y/(y+n)*100),2)) %>%
+  rename('NA' = 4,
+         'Not reported' = n,
+         'Reported' = y) %>%
+  # Keep the order of items constant:
+mutate(Item = fct_relevel(Item, columns_to_apply)) %>%
+arrange(Item) %>%
+rename('CONSORT_Item' = Item)
+  
+
+```
+
+Now that we have the data prepared, and some descriptive data for the items and table them:
+
+```{r message = FALSE, warning = FALSE}
+CONSORT_ITEMS  <-   data.frame(
+  Item = c(
+    "1a",
+    "1b",
+    "2a",
+    "2b",
+    "3a",
+    "3b",
+    "4a",
+    "4b",
+    "5",
+    "6a",
+    "6b",
+    "7a",
+    "7b",
+    "8a",
+    "8b",
+    "9",
+    "10",
+    "11a",
+    "11b",
+    "12a",
+    "12b",
+    "13a",
+    "13b",
+    "14a",
+    "14b",
+    "15",
+    "16",
+    "17a",
+    "17b",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22",
+    "23",
+    "24",
+    "25"
+  ),
+  Description = c(
+    "Identification in title",
+    "Structured summary abstract",
+    "Scientific background",
+    "Objectives or hypothesis",
+    "Design & allocation ratio.",
+    "Changes to methods",
+    "Eligibility criteria",
+    "Settings & locations",
+    "Intervention & control",
+    "Primary & secondary outcomes",
+    "Changes to trial outcomes",
+    "How sample size was determined.",
+    "Interim analyses & stopping",
+    "Randomisation: sequence",
+    "Randomisation: type",
+    "Randomisation: implementation",
+    "Randomisation: roles",
+    "Blinding",
+    "Similarity of interventions",
+    "Statistical methods used",
+    "Methods: additional analyses",
+    "No. of participants randomised",
+    "Dropout rates & reasons",
+    "Trial dates",
+    "Why the trial ended",
+    "Baseline characteristics table",
+    "No. participants analysed",
+    "Effect sizes & precision",
+    "Binary outcome effect sizes",
+    "Other analysis outcomes",
+    "Important harms",
+    "Trial limitations",
+    "Generalisability",
+    "Fair interpretation",
+    "Registration number",
+    "Full trial protocol",
+    "Funding, role of funders"
+  ),
+  'CONSORT_Item' = c(columns_to_apply
+)) %>%
+as_tibble()
+
+full_join(CONSORT_ITEMS,item_adherence_overall_summaries) %>%
+  select(Item, Description, Reported, everything())%>%
+  select(-CONSORT_Item) %>%
+gt() %>% 
+   tab_header(
+    title = md("**Table 3. Number & percentage of studies reporting CONSORT items**"))  %>%
+  gt_color_rows(6, palette = c("#F0FFF7", "#289998"))  %>%
+    tab_spanner(
+    label = "CONSORT Item",
+    columns = 1:2
+  ) %>%
+  tab_spanner(
+    label = "Adherence",
+    columns = 3:6) %>%
+    tab_options(data_row.padding = px(2.7)) %>%
+   cols_align(
+    align = "left",
+    columns = vars(Description)) %>% 
+     cols_align(
+    align = "center",
+    columns = vars(1, 3:6)) %>%
+   tab_footnote(
+    footnote = "Calculated as percentage of studies where relevant (i.e., excluding NA values). Darker colours indicate that an item was more reported more frequently.",
+    locations = cells_column_labels(columns = 6)) %>%
+  opt_footnote_marks(marks = "standard")
+
+
+```
+
+# Hypothesis test
+
+> H1: The reporting completeness of randomised control trials in the behavioural addiction literature, as determined by the number of CONSORT items reported, will be statistically poorer (i.e., fewer mean items) than the reporting quality of randomised control trials in the substance addiction literature.
+
+Our only hypothesis is stated above.
+
+Here's what we stated in our preregistration about testing this hypothesis:
+
+> -   *Provided there are ≥ 28 behavioural addiction studies published overall, we will conduct a Welch’s t-test to compare the mean number of reported items between the behavioural addiction (outcomes from our review) and substance addiction (outcomes from Vassar et al., 2019) randomised controlled trials. Again, this is based on a power calculation for a one-tailed t-test with an estimated allocation rate of 8:1 (substance-behavioural; alpha = 0.05, power = 0.8, medium effect size \[d\] = 0.5) using G\*Power software version 3.1 (Faul et al., 2009), which indicated that a minimum of 28 behavioural addiction and 224 substance addiction studies would be required. Vassar et al.’s (2019) sample will be of sufficient size (394 studies) for this analysis, though we cannot guarantee that there will be a sufficient number of behavioural addictions randomised controlled trials in our sample. As stated earlier, Vassar et al. (2019) appear to have omitted items 6b (“Any changes to trial outcomes after the trial commenced, with reasons” ), 7b (“When applicable, explanation of any interim analyses and stopping guidelines”), 11b (“If relevant, description of the similarity of interventions”), 14b (“Why the trial ended or was stopped”), and 17b (“For binary outcomes, presentation of both absolute and relative effect sizes is recommended”). We will omit these items from our assessment of behavioural addiction randomised controlled trials when performing this comparison. Finally, Vassar et al. (2019) restricted their search to a five-year period (2013/01/01 –2017/12/31) and our search spans a 10-year period (2010/10/06 – 2020/10/06). If we identify ≥ 28 behavioural addiction studies published within the five-year period studied by Vassar et al. (2019) we will undertake two comparisons. First, we will compare our entire sample of studies with Vassar et al.’s studies. Second, we will compare our sample of behavioural addiction studies published between 2013/01/01 and 2017/12/31 with Vassar et al.’s studies for a comparison of behavioural and substance addiction randomised controlled trials over the same time period.*
+>
+> -   *For the above comparison tests, if the assumption of normal distribution is not met, then a Mann-Whitney U test will be performed. Normality will be assessed by using Shapiro-Wilk’s test and p values \< 0.05 will be interpreted as evidence of non-normality. Homogeneity of variance is not required for Welch’s t-test and will not be tested.*
+>
+> -   *Each study will have a score for the total number of CONSORT items reported and these will be converted to z scores for outlier detection. Studies with z scores \> 3 will be considered outliers. If we perform Welch’s t-test then the number of outliers will be reported and the results from the Welch’s t-test(s) with and without outliers will be reported (that is, if any outliers are identified). If we perform Mann-Whitney U tests (due to non-normality) then outliers will not be tested for, reported, or removed from analyses.*
+
+After two years of requesting the data, we received it in late March 2024.
+
+Let's start by loading in the data and checking how it's structured and formatted (output hidden for space):
+
+```{r results=FALSE}
+CONSORT_adherence_vassar_data  <- read_excel("C:/Users/Nikki/Dropbox/ResearchProjects/Open science projects/RCT CONSORT study/Data & analysis - Study 1/Data/Vassar_etal_data_2019.xlsx")
+  
+glimpse(CONSORT_adherence_vassar_data)
+
+names(CONSORT_adherence_vassar_data)
+
+# names(CONSORT_adherence_data_with_study_totals)
+```
+
+Now let's focus on trying to merge their data with ours.
+
+We'll start with making their dataset consistent with ours:
+
+```{r message=FALSE, warning=FALSE}
+
+cleaned_CONSORT_adherence_vassar_data <- CONSORT_adherence_vassar_data %>%
+  rename(
+    title = `Study Title`,
+    date_published = `Year of Publication`,
+    funding_source = Funding,
+    item_1a_title_abst = `1a. Identification as a randomised trial in the title?`,
+    item_1b_title_abst = `1b. Structured summary of trial design, methods, results, and conclusions? (See CONSORT for Abstracts)`,
+    item_2a_intro = `2a. Scientific background and explanation of rationale?`,
+    item_2b_intro = `2b. Specific objectives or hypotheses?`,
+    item_3a_methods = `3a. Description of trial design (such as parallel, factorial) including allocation ratio?`,
+    item_3b_methods = `3b Important changes to methods after trial commencement (such as eligibility criteria), with reasons?`,
+    item_4a_methods = `4a. Eligibility criteria for participants?`,
+    item_4b_methods = `4b. Settings and locations where the data were collected?`,
+    item_5_methods = `5. The interventions for each group with sufficient details to allow replication, including how and when they were actually administered?`,
+    item_6a_methods = `6a. Completely defined pre-specified primary and secondary outcome measures, including how and when they were assessed?`,
+    item_6b_methods = `6b. Any changes to trial outcomes after the trial commenced, with reasons?`,
+    item_7a_methods = `7a. How sample size was determined?`,
+    item_7b_methods = `7b. When applicable, explanation of any interim analyses and stopping guidelines?`,
+    item_8a_methods = `8a. Method used to generate the random allocation sequence?`,
+    item_8b_methods = `8b. Type of randomisation; details of any restriction (such as blocking and block size)?`,
+    item_9_methods = `9. Mechanism used to implement the random allocation sequence (such as sequentially numbered containers),describing any steps taken to conceal the sequence until interventions were assigned?`,
+    item_10_methods = `10. Who generated the random allocation sequence, who enrolled participants, and who assigned participants to interventions`,
+    item_11a_methods = `11a. If done, who was blinded after assignment to interventions (for example, participants, care providers, those CONSORT 2010 checklist Page 2assessing outcomes) and how?`,
+    item_11b_methods = `11b. If relevant, description of the similarity of interventions?`,
+    item_12a_methods = `12a. Statistical methods used to compare groups for primary and secondary outcomes?`,
+    item_12b_methods = `12b. Methods for additional analyses, such as subgroup analyses and adjusted analyses?`,
+    item_13a_results = `13a. For each group, the numbers of participants who were randomly assigned, received intended treatment, andwere analysed for the primary outcome?`,
+    item_13b_results = `13b. For each group, losses and exclusions after randomisation, together with reasons?`,
+    item_14a_results = `14a. Dates defining the periods of recruitment and follow-up?`,
+    item_14b_results = `14b. Why the trial ended or was stopped?`,
+    item_15_results = `15. A table showing baseline demographic and clinical characteristics for each group?`,
+    item_16_results = `16. For each group, number of participants (denominator) included in each analysis and whether the analysis wasby original assigned groups?`,
+    item_17a_results = `17a. For each primary and secondary outcome, results for each group, and the estimated effect size and its precision (such as 95% confidence interval)?`,
+    item_17b_results = `17b. For binary outcomes, presentation of both absolute and relative effect sizes is recommended?`,
+    item_18_results = `18. Results of any other analyses performed, including subgroup analyses and adjusted analyses, distinguishingpre-specified from exploratory?`,
+    item_19_results = `19. All important harms or unintended effects in each group? (See CONSORT for Harms)`,
+    item_20_discussion = `20. Trial limitations, addressing sources of potential bias, imprecision, and, if relevant, multiplicity of analyses?`,
+    item_21_discussion = `21. Generalisability (external validity, applicability) of the trial findings?`,
+    item_22_discussion = `22. Interpretation consistent with results, balancing benefits and harms, and considering other relevant evidence?`,
+    item_23_other_info = `23. Registration number and name of trial registry?`,
+    item_24_other_info = `24. Where the full trial protocol can be accessed, if available?`,
+    item_25_other_info = `25. Sources of funding and other support (such as supply of drugs), role of funders?`) %>%
+  select(-`Timestamp`,
+         -`Name of Data Extractor`,
+         -`Author Name`,
+         -`Name of Journal`,   
+         -`26. Does it mention anywhere that the trial data is publicly available/shareable?`,
+         -`If yes, copy and paste here`) %>%
+  mutate(SAMPLE = "Substance addiction RCTs") # Create sample identifying variable
+```
+
+Looking at their data, although they didn't report the outcomes in the findings, the collected data for every CONSORT outcome. Therefore, despite our preregistered plans, it makes more sense to directly compare their outcomes with ours on all items. We can use the percentage of items reported to ensure our use of NA values doesn't affect outcomes (despite their reporting, there are no NAs in their dataset?).
+
+Now, let's prepare our dataset and then merge with Vassar et al.'s:
+
+```{r message=FALSE, warning=FALSE}
+CONSORT_adherence_2sample_data <- Study1_CONSORT_adherence_data %>%
+  mutate(SAMPLE = "Behavioural addiction RCTs") %>% # Create sample identifying variable
+    select(-study_no, 
+           -printed,
+           -doi,
+           -behavioural_addiction, 
+         -secondary_additional_diagnosis,
+         -self_identifies_as_rct, 
+         -funding_comment,
+         -comments) %>%
+  bind_rows(cleaned_CONSORT_adherence_vassar_data) %>%
+    # Recode y/n/na values:
+     mutate_at(vars(c(columns_to_apply)),
+            ~case_when(
+              . == "y" ~ 1,
+              . == "Yes" ~ 1, # Vasser coding differs
+              . == "n" ~ 0,
+              . == "No" ~ 0,  # Vasser coding differs
+              . == "n/a" ~ NA,
+              TRUE ~ as.numeric(.)
+            )) %>%
+   mutate(total_adherence_absolute = rowSums(select(., all_of(columns_to_apply)), na.rm = TRUE))  %>%
+mutate(percent_reported = rowSums(select(., all_of(columns_to_apply)) == 1, na.rm = TRUE) /
+                              rowSums(!is.na(select(., all_of(columns_to_apply)))) * 100)
+
+
+nrow(CONSORT_adherence_2sample_data)
+```
+
+As per our preregistration, let's check whether our data are normally distributed using a Shapiro Wilk's test:
+
+```{r message=FALSE, warning=FALSE}
+shapiro_output <- shapiro.test(CONSORT_adherence_2sample_data$percent_reported)
+
+shapiro_output
+```
+
+The data appear to be non-normally distributed. Let's write this for the manuscript:
+
+-   We used a Shapiro Wilk's test to explore the distribution of adherence scores for our sample and found evidence of non-normality (*p* = `r round(shapiro_output$p.value, 2)`).
+
+```{r message=FALSE, warning=FALSE}
+CONSORT_adherence_2sample_data %>%
+  ggplot(aes(x = percent_reported)) +
+  geom_histogram(binwidth = 5, fill = "skyblue", color = "black", aes(y = ..count..), alpha = 0.8) +
+  labs(title = "Histogram of Percentage of Items Reported (2 samples combined)",
+       x = "Percent Reported",
+       y = "Frequency") +
+  plot_theme
+```
+
+Again, as per our preregistration, let's convert our outcome variable to Z scores and check for outliers by filtering the dataset by including only studies with a Z score \>3 or \< -3.
+
+```{r message=FALSE, warning=FALSE}
+CONSORT_adherence_2sample_data %>%
+  mutate(total_adherence_vassar_compar_z = 
+           (percent_reported - mean(percent_reported, na.rm = TRUE)) / 
+           sd(percent_reported, na.rm = TRUE)) %>%
+      select(total_adherence_absolute, percent_reported,
+  total_adherence_vassar_compar_z)  %>%
+filter(total_adherence_vassar_compar_z >3| total_adherence_vassar_compar_z < -3)
+```
+
+There are no outliers.
+
+## All-study comparison
+
+Okay, let's start by comparing all the studies in our sample with that of Vassar et al.'s sample, regardless of the year of publication.
+
+Let's perform a Mann-Whitney-U test to compare the two samples as the scores are non-normally distributed:
+
+```{r message=FALSE, warning=FALSE}
+# Perform Mann-Whitney U Test
+mwu_test_result <-  wilcox.test(percent_reported ~ SAMPLE, data=CONSORT_adherence_2sample_data) 
+
+# Display the results
+print(mwu_test_result)
+
+
+# Compute summary statistics for inclusion in test results:
+summary_stats_hypothesis_test<- CONSORT_adherence_2sample_data %>%
+  group_by(SAMPLE)%>%
+  summarise(median = round(median(percent_reported),1),
+            min = round(min(percent_reported),1),
+            max = round(max(percent_reported),1)
+            )
+
+behav_addic_median <- summary_stats_hypothesis_test %>% filter(SAMPLE == "Behavioural addiction RCTs") %>% select(median) %>% pull()
+behav_addic_min <- summary_stats_hypothesis_test %>% filter(SAMPLE == "Behavioural addiction RCTs") %>% select(min) %>% pull()
+behav_addic_max <- summary_stats_hypothesis_test %>% filter(SAMPLE == "Behavioural addiction RCTs") %>% select(max) %>% pull()
+
+subtance_addic_median <- summary_stats_hypothesis_test %>% filter(SAMPLE == "Substance addiction RCTs") %>% select(median) %>% pull()
+subtance_addic_min <- summary_stats_hypothesis_test %>% filter(SAMPLE == "Substance addiction RCTs") %>% select(min) %>% pull()
+substance_addic_max <- summary_stats_hypothesis_test %>% filter(SAMPLE == "Substance addiction RCTs") %>% select(max) %>% pull()
+  
+
+mwu_test_result$statistic
+
+mwu_test_result$p.value
+```
+
+Okay, let's write up the result for the manuscript:
+
+-   Using a Mann-Whitney U test, we found that the difference between adherence scores for our sample of behavioural addictions articles (*Mdn* = `r behav_addic_median`, *range* = `r behav_addic_min`-`r behav_addic_max`) and Vassar and colleagues' (2019) substance addiction articles (*Mdn* = `r subtance_addic_median`, *range* = `r subtance_addic_min`-`r substance_addic_max`) was not statistically significant, *U* = `r format(mwu_test_result$statistic, scientific = FALSE)`, *p* = `r round(mwu_test_result$p.value, 4)`.
+
+## Period-specific comparison
+
+Okay, let's see whether they are 28 or more articles in our sample that were published between 2013 and 2017, allowing us to make a more specific comparison with Vassar and colleagues starter. Again this is consistent with our preregistered analysis plan.
+
+```{r message=FALSE, warning=FALSE}
+Study1_CONSORT_adherence_data %>%
+filter(date_published >2012 & date_published < 2018) %>%
+nrow()
+```
+
+Unfortunately, there are only 21 articles in our sample published within the same date range as Vassar et al., and so this is not sufficiently large enough to compare using inferential statistical methods.
+
+We can however, still produce summary statistics for the studies in our sample published within the same date range:
+
+```{r message=FALSE, warning=FALSE}
+CONSORT_adherence_2sample_data %>%
+filter(date_published >2012 & date_published < 2018) %>%
+   group_by(SAMPLE)%>%
+  summarise(median = round(median(percent_reported),1),
+            min = round(min(percent_reported),1),
+            max = round(max(percent_reported),1)
+            ) %>%
+gt() %>%
+   tab_header(
+    title = md("**Summary stats for articles published 2013-2017 for comparison with Vasser et al.**"))
+```
+
+# Reproducing this analysis
+
+### Package stability
+
+To ensure that every time this script runs it will use the same versions of the packages used during the script development, all packages are loaded using the `groundhog.library()` function from the [groundhog package](https://cran.r-project.org/web/packages/groundhog/index.html).
+
+### Rendering & publishing
+
+This document is rendered in HTML format and published online using [Quarto Pub](https://quarto.org/docs/publishing/quarto-pub.html) by using the following command in the terminal:
+
+-   quarto publish quarto-pub
+
+The published online version of this document can be accessed here.
+
+### Git/ Github
+
+The repository for the code used here can be accessed via this link.
+
+Git and Github set up following the guide presented [here](https://raps-with-r.dev/git.html). From this book:
+
+-   [Building reproducible analytical pipelines with R](https://raps-with-r.dev/)
+
+### Session details
+
+::: {.callout-note collapse="true"}
+## Expand for session information
+
+```{r, echo = FALSE}
+session_info(pkgs = "attached")
+sessionInfo()
+```
+:::
