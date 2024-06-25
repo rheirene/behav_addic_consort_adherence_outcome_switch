@@ -94,7 +94,7 @@ plot_theme<- theme_classic() +
 
 ## Load data from Google Sheets
 
-We'll first loading two datasheets: one for title and abstract screening and one for full text screening:
+We'll first loading two datasheets: one for title and abstract screening and one for full text screening. The original data files were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be committed to git and then we (and anyone else) can load from there in future:
 
 ```{r message = FALSE, warning = FALSE, results=FALSE}
 # Title and abstract screening data:
@@ -103,11 +103,29 @@ as_tibble()
 
 head(title_abstract_screening_temp)
 
+title_abstract_screening_temp <- title_abstract_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
+
+write_csv(title_abstract_screening_temp, "Data/title_abstract_screening_temp.csv")
+
+title_abstract_screening_temp_url <- "" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
+
+abstract_adherence_data <- read_csv(abstract_adherence_data_url) %>%
+  as_tibble()
+
 # Fulltext screening data:
 full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
 as_tibble() 
 
 head(full_text_screening_temp)
+
+full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
+
+write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
+
+full_text_screening_temp_url <- "" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
+
+abstract_adherence_data <- read_csv(abstract_adherence_data_url) %>%
+  as_tibble()
 
 ```
 
@@ -350,19 +368,19 @@ dev.off()
 
 ## Load & save 
 
-The original data files used for scoring articles were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be comiited to git and then we (and anyone else) can load from there in future
+The original data files used for scoring articles were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be comiited to git and then we (and anyone else) can load from there in future:
 
 ```{r message = FALSE, warning = FALSE, results=FALSE}
-# Study 1 abstract adherence data
-abstract_adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=674745925#gid=674745925", "Abstract - CONSORT adherence coding") 
+# # Study 1 abstract adherence data
+# abstract_adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=674745925#gid=674745925", "Abstract - CONSORT adherence coding") 
+# 
+# # head(abstract_adherence_data)
+# # View(abstract_adherence_data)
+# abstract_adherence_data <- abstract_adherence_data %>% mutate(`Study no.` = unlist(`Study no.`))
+# 
+# write_csv(abstract_adherence_data, "Data/abstract_adherence_data.csv")
 
-# head(abstract_adherence_data)
-# View(abstract_adherence_data)
-abstract_adherence_data <- abstract_adherence_data %>% mutate(`Study no.` = unlist(`Study no.`))
-
-write_csv(abstract_adherence_data, "Data/abstract_adherence_data.csv")
-
-abstract_adherence_data_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/abstract_adherence_data.csv" # Note: 
+abstract_adherence_data_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/abstract_adherence_data.csv" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
 
 abstract_adherence_data <- read_csv(abstract_adherence_data_url) %>%
   as_tibble()
