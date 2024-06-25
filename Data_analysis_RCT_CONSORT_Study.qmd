@@ -356,8 +356,15 @@ The original data files used for scoring articles were stored on Google Sheets. 
 # Study 1 abstract adherence data
 abstract_adherence_data<- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=674745925#gid=674745925", "Abstract - CONSORT adherence coding") 
 
-head(abstract_adherence_data)
+# head(abstract_adherence_data)
 # View(abstract_adherence_data)
+
+write.csv(abstract_adherence_data, "Data/abstract_adherence_data.csv")
+
+abstract_adherence_data_url <- "https://github.com/rheirene/behav_addic_consort_adherence_outcome_switch/blob/main/Data/abstract_adherence_data.csv"
+
+abstract_adherence_data <- read.csv(abstract_adherence_data_url) %>%
+  as_tibble()
 
 ```
 
