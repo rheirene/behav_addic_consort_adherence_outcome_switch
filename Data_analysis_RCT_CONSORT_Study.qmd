@@ -113,14 +113,14 @@ title_abstract_screening_temp <- read_csv(title_abstract_screening_temp_url) %>%
 head(title_abstract_screening_temp)
 
 # Fulltext screening data:
-# full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
-# as_tibble() 
+full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
+ as_tibble() 
 
 # head(full_text_screening_temp)
 
-# full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
+full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
 
-# write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
+write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
 
 full_text_screening_temp_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/full_text_screening_temp.csv" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
 
@@ -370,7 +370,7 @@ dev.off()
 
 # Abstract data
 
-## Load & save 
+## Load & save
 
 The original data files used for scoring articles were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be comiited to git and then we (and anyone else) can load from there in future:
 
