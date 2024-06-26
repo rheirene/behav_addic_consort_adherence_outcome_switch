@@ -1050,8 +1050,10 @@ This outcome is quite unexpected (Journals that do not endorse consort scored hi
 Study1_abstract_adherence_data %>%
   mutate(study_no = as.double(study_no)) %>%
   select(title = title, journal, study_no) %>% 
-  full_join(CONSORT_adherence_data_with_study_totals, join_by(title)) %>%
+  full_join(CONSORT_adherence_data_with_study_totals, join_by(title)) %>% 
 left_join(full_text_screening, join_by(title)) %>%
+    select(consort, everything()) %>%
+  View()
   mutate(consort = case_when(
     consort == TRUE ~ "Endorses CONSORT",
     consort == FALSE ~ "No endorsement"
