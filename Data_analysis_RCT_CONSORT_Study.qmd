@@ -113,14 +113,14 @@ title_abstract_screening_temp <- read_csv(title_abstract_screening_temp_url) %>%
 head(title_abstract_screening_temp)
 
 # Fulltext screening data:
-full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
- as_tibble() 
+# full_text_screening_temp <- googlesheets4::read_sheet("https://docs.google.com/spreadsheets/d/1XxEx_HbsZi9d7YLJRDvjwvpZ0eWHild8G3TT-NTzus8/edit?gid=1250766693#gid=1250766693", "Full Text Screening FINAL") %>%
+#  as_tibble() 
 
 # head(full_text_screening_temp)
 
-full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
+# full_text_screening_temp <- full_text_screening_temp %>% mutate(`Study no.` = unlist(`Study no.`))
 
-write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
+# write_csv(full_text_screening_temp, "Data/full_text_screening_temp.csv")
 
 full_text_screening_temp_url <- "https://raw.githubusercontent.com/rheirene/behav_addic_consort_adherence_outcome_switch/main/Data/full_text_screening_temp.csv" # Note: Use link from page after selecting "raw" button, otherwise it loads all page data 
 
@@ -446,6 +446,7 @@ Table outcomes:
 
 ```{r message = FALSE, warning = FALSE}
 Study1_abstract_adherence_data %>%
+  select(-'funding_later') %>%
 pivot_longer(cols = 4:19, names_to = "Item", values_to = "value") %>%
   filter(!is.na(value)) %>%
   filter(value != "N/A") %>%
@@ -460,7 +461,7 @@ pivot_longer(cols = 4:19, names_to = "Item", values_to = "value") %>%
   ungroup() %>%
   select(-Item, -percent_no) %>%
   rename(Item = Item_nice) %>%
-  select(Item, everything()) %>%
+  select(Item, n_yes, everything()) %>%
 gt() %>% 
    cols_align(
     align = "right",
@@ -469,7 +470,7 @@ gt() %>%
     align = "center",
     columns = vars(2:4)) %>% 
 gt_color_rows(percent_yes, palette = c("#F0FFF7", "#289998"))  %>%
-  cols_label(percent_yes ~ "Percent/n reported",
+  cols_label(percent_yes ~ "Percent reported",
              n_no ~ "Not reported",
              n_yes ~ "Reported") %>%
  tab_header(
@@ -483,7 +484,14 @@ gt_color_rows(percent_yes, palette = c("#F0FFF7", "#289998"))  %>%
     columns = vars(Item)) %>% 
      cols_align(
     align = "center",
-    columns = vars(2:4))
+    columns = vars(2:4))%>%
+  tab_footnote(
+    footnote = "This was only scored if reported in the abstract or alongside other article meta-data towards the top of the article. A further 46 studies (73%) reported funding later in the article.",
+    locations = cells_body(
+      columns = vars(Item),
+      rows = Item == "Funding"
+    )
+  )
 
 ```
 
@@ -506,6 +514,15 @@ summarise(
   mean(percent_yes),
   median(percent_yes)
 )
+```
+
+When it comes to the funding item for abstracts, we scored this only if they reported the funding on the first page, or at least in with the rest of the upfront article details. How many articles reported funding but didn't included in the abstract:
+
+```{r}
+Study1_abstract_adherence_data %>% 
+  dplyr::count(funding_later) %>%
+  mutate(percent = round(n/sum(n)*100,2)) %>%
+  gt()
 ```
 
 # CONSORT Data
@@ -541,7 +558,7 @@ colnames(adherence_data)[c(10:46)] <- paste('Item', colnames(adherence_data)[c(1
 
 Study1_CONSORT_adherence_data  <-  adherence_data %>%
   mutate(`Item_14b - Results` = ifelse(
-    `Item_14b - Results` %in% c("n/NA?", "y/NA?"), 
+    `Item_14b - Results` %in% c("n\nA?", "y\nA?"), 
     "n/a",
     `Item_14b - Results`)) %>% # Fix temporary coding
  clean_names()  %>%
@@ -667,7 +684,7 @@ Item_nice = c(
     "25 - Other information"))
 
 CONSORT_adherence_data_with_study_totals  <-   Study1_CONSORT_adherence_data %>%
-   # Recode y/n/na values:
+   # Recode y\n\na values:
      mutate_at(vars(c(columns_to_apply)),
             ~case_when(
               . == "y" ~ 1,
@@ -1106,7 +1123,7 @@ tbL_summary_journal) %>%
     align = "center",
     columns = vars(2:5)) %>%
    tab_header(
-    title = md("**Table 2. Summary of CONSORT adherence in reviewed studies**"))  %>%
+    title = md("**Table 3. Summary of CONSORT adherence in reviewed studies**"))  %>%
     tab_row_group(
     label = md("_**Behavioural addiction**_"),
     rows = 2:3) %>% # change to 1:2 when 1b added
@@ -1194,7 +1211,7 @@ adherence_by_year_plot_base  <-   CONSORT_adherence_data_with_study_totals %>%
   geom_line(data = adherence_by_year_plot_data, aes(x = Year, y = percent_reported_mean), color = "dodgerblue", linewidth = 0.8, group = 1) + 
   scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 20)) +  # Set y-axis limits and breaks
   scale_x_continuous(breaks = seq(2010, 2023, by = 1)) +  # Set x-axis breaks for alternating years
-  labs(x = "", y = "Percentage of relevant/n items reported") +  # Add axis labels and title
+  labs(x = "", y = "Percentage of relevant\n items reported") +  # Add axis labels and title
   plot_theme
 
 
@@ -1203,7 +1220,7 @@ adherence_by_year_plot <- adherence_by_year_plot_base +
   geom_bar(data = adherence_by_year_plot_data, aes(x = Year, y = Count), stat = "identity", fill = "grey") +
   geom_text(data = adherence_by_year_plot_data, aes(x = Year, label = Count, y = Count), vjust = -0.2, size = 3, family = "Reem Kufi")+  
   scale_y_continuous(guide = "axis_truncated",
-                     sec.axis = dup_axis(breaks = c(0,20), guide = "axis_truncated",name = "                                         No./n                                        RCTs"
+                     sec.axis = dup_axis(breaks = c(0,20), guide = "axis_truncated",name = "                                         No.\n                                        RCTs"
                      )  
   ) +
   theme(axis.line.y = element_line(),
@@ -1265,7 +1282,7 @@ item_adherence_overall_summaries <-  Study1_CONSORT_adherence_data %>%
   # View() #Check coding
   pivot_wider(names_from = value, values_from = n, values_fill = list(n = 0)) %>%
   # Compute percentages:
-   mutate('Percent/n reported' = round((y/(y+n)*100),2)) %>%
+   mutate('Percent\n reported' = round((y/(y+n)*100),2)) %>%
   rename('NA' = 4,
          'Not reported' = n,
          'Reported' = y) %>%
@@ -1357,7 +1374,7 @@ CONSORT_ITEMS  <-   data.frame(
     "Fair interpretation",
     "Registration number",
     "Full trial protocol",
-    "Funding, role of funders"
+    "Funding & role of funders"
   ),
   'CONSORT_Item' = c(columns_to_apply
 )) %>%
@@ -1368,7 +1385,7 @@ full_join(CONSORT_ITEMS,item_adherence_overall_summaries) %>%
   select(-CONSORT_Item) %>%
 gt() %>% 
    tab_header(
-    title = md("**Table 3. Number & percentage of studies reporting CONSORT items**"))  %>%
+    title = md("**Table 2. Number & percentage of studies reporting CONSORT items**"))  %>%
   gt_color_rows(6, palette = c("#F0FFF7", "#289998"))  %>%
     tab_spanner(
     label = "CONSORT Item",
@@ -1385,11 +1402,27 @@ gt() %>%
     align = "center",
     columns = vars(1, 3:6)) %>%
    tab_footnote(
-    footnote = "Calculated as percentage of studies where relevant (i.e., excluding NA values). Darker colours indicate that an item was more reported more frequently.",
+    footnote = "Calculated as percentage of studies where relevant (i.e., excluding NA values). Darker colours indicate that an item was reported more frequently.",
     locations = cells_column_labels(columns = 6)) %>%
   opt_footnote_marks(marks = "standard")
 
 
+```
+
+How many items were reported in more than 50% of articles?
+
+```{r}
+item_adherence_overall_summaries %>%
+  filter(`Percent\n reported` >50) %>% 
+  nrow()
+```
+
+And less than 50% of articles?
+
+```{r}
+item_adherence_overall_summaries %>%
+  filter(`Percent\n reported` <50) %>% 
+  nrow()
 ```
 
 # Hypothesis test
@@ -1493,7 +1526,7 @@ CONSORT_adherence_2sample_data <- Study1_CONSORT_adherence_data %>%
          -funding_comment,
          -comments) %>%
   bind_rows(cleaned_CONSORT_adherence_vassar_data) %>%
-    # Recode y/n/na values:
+    # Recode y\n\na values:
      mutate_at(vars(c(columns_to_apply)),
             ~case_when(
               . == "y" ~ 1,
