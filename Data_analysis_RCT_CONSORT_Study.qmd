@@ -952,7 +952,6 @@ We know from our analyses above that we have not reached more than 51 articles p
 The CONSORT endorsement data is actually in the full-text screening spreadsheet (minor waste of time doing it for all articles screened at this level), so we'll load this in and then keep only the studies included in the review.
 
 ```{r message = FALSE, warning = FALSE}
-View(tbl_summary_consort)
 tbl_summary_consort  <-   CONSORT_adherence_data_with_study_totals %>%
 left_join(full_text_screening, join_by(title)) %>%
   mutate(consort = case_when(
@@ -1052,8 +1051,8 @@ Study1_abstract_adherence_data %>%
   select(title, journal, study_no) %>% 
   full_join(CONSORT_adherence_data_with_study_totals, join_by(title)) %>% 
 left_join(full_text_screening, join_by(title)) %>%
-    select(consort, everything()) %>%
-  View()
+  #   select(consort, everything()) %>%
+  # View()
   mutate(consort = case_when(
     consort == TRUE ~ "Endorses CONSORT",
     consort == FALSE ~ "No endorsement"
@@ -1138,7 +1137,7 @@ tbL_summary_journal) %>%
     footnote = "Darker colours indicate greater adherence to CONSORT reporting guidelines.",
     locations = cells_column_labels(columns = 5)) %>%
     tab_footnote(
-    footnote = " Percentages calculated as number a proportion of relevant items (i.e., excluding NA values). ",
+    footnote = "Percentages calculated as the proportion of relevant items, excluding NA values.",
     locations = cells_column_labels(columns = 5)) %>%
     tab_footnote(
     footnote = "Rates are reported for journals publishing 2 or more articles.",
