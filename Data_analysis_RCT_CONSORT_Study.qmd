@@ -1144,12 +1144,12 @@ tbL_summary_journal) %>%
   tab_spanner(
     label = "Adherence",
     columns = 3:5) %>%
-   # cols_label(
-   #  N = md("*N*"),
-   #  'M (SD)' = md("*M* (*SD*)"),
-   #  'Mdn (range)' = md("*M* (range)"),
-   #  'Mdn % reported' = md("*Mdn* %<br>reported"),
-    # Characteristic = "") %>%
+   cols_label(
+    N = md("*N*"),
+    'M (SD)' = md("*M* (*SD*)"),
+    'Mdn (range)' = md("*M* (range)"),
+    'M % reported' = md("*M* %<br>reported"),
+    Characteristic = "") %>%
    tab_footnote(
     footnote = "Darker colours indicate greater adherence to CONSORT reporting guidelines.",
     locations = cells_column_labels(columns = 5)) %>%
@@ -1588,11 +1588,17 @@ Let's perform a Mann-Whitney-U test to compare the two samples as the scores are
 
 ```{r message=FALSE, warning=FALSE}
 # Perform Mann-Whitney U Test
-mwu_test_result <-  wilcox.test(percent_reported ~ SAMPLE, data=CONSORT_adherence_2sample_data) 
+mwu_test_result <-  wilcox.test(percent_reported ~ SAMPLE, 
+                                data=CONSORT_adherence_2sample_data, 
+                                conf.int=TRUE,
+                                conf.level=0.95) 
 
 # Display the results
 print(mwu_test_result)
 
+# Extract the Hodges-Lehmann estimator and confidence intervals
+hl_median_diff <- mwu_test_result$estimate
+hl_conf_int <- as.matrix(mwu_test_result$conf.int)
 
 # Compute summary statistics for inclusion in test results:
 summary_stats_hypothesis_test<- CONSORT_adherence_2sample_data %>%
@@ -1618,7 +1624,7 @@ mwu_test_result$p.value
 
 Okay, let's write up the result for the manuscript:
 
--   Using a Mann-Whitney U test, we found that the difference between adherence scores for our sample of behavioural addictions articles (*Mdn* = `r behav_addic_median`, *range* = `r behav_addic_min`-`r behav_addic_max`) and Vassar and colleagues' (2019) substance addiction articles (*Mdn* = `r subtance_addic_median`, *range* = `r subtance_addic_min`-`r substance_addic_max`) was statistically significant, *U* = `r format(mwu_test_result$statistic, scientific = FALSE)`, *p* = `r round(mwu_test_result$p.value, 4)`.
+-   Using a Mann-Whitney U test, we found that the difference between adherence scores for our sample of behavioural addictions articles (*Mdn* = `r behav_addic_median`, *range* = `r behav_addic_min`-`r behav_addic_max`) and Vassar and colleagues' (2019) substance addiction articles (*Mdn* = `r subtance_addic_median`, *range* = `r subtance_addic_min`-`r substance_addic_max`) was statistically significant, *U* = `r format(mwu_test_result$statistic, scientific = FALSE)`, *p* = `r round(mwu_test_result$p.value, 4)`, median~diff~ = `r round(hl_median_diff, 2)` [95% CIs: `r round(hl_conf_int[1,],2)`, `r round(hl_conf_int[2,],2)`]
 
 ## Period-specific comparison
 

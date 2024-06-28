@@ -1,0 +1,4 @@
+- source: Data_analysis_RCT_CONSORT_Study.qmd
+  quarto-pub:
+    - id: 4f0db5d9-f027-4934-8f9d-020ddc7dc384
+      url: 'https://robheirene.quarto.pub/data-analysis-consort-adherence-among-behavioural-addiction-rcts'
