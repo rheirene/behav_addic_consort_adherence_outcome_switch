@@ -92,7 +92,7 @@ plot_theme<- theme_classic() +
 
 ## Load data from Google Sheets
 
-We'll first loading two datasheets: one for title and abstract screening and one for full text screening. The original data files were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be committed to git and then we (and anyone else) can load from there in future. In the interest of transparency, I have left all code included here but commented out the downloading and saving from GS.
+We'll first load in two datasheets: one for title and abstract screening and one for full text screening. The original data files were stored on Google Sheets. Load in the data from Google Sheets and save it locally so it will be committed to git and then we (and anyone else) can load from there in future. In the interest of transparency, I have left all code included here but commented out the downloading and saving from GS.
 
 ```{r message = FALSE, warning = FALSE, results=FALSE}
 # Title and abstract screening data:
@@ -958,6 +958,15 @@ tbL_summary_journal  <-  Study1_abstract_adherence_data %>%
 
 ```
 
+What is the total number of articles this analysis relates to and what percentage of articles from our samples is covered?
+
+```{r}
+N_2_or_more<- Study1_abstract_adherence_data %>%
+  filter(journal %in% journals_two_or_more) # Include only studies published in journals that have two or more articlles in the sample
+```
+
+Okay, so this covers `r nrow(N_2_or_more)` aricles, which is `r round(nrow(N_2_or_more)/nrow(Study1_abstract_adherence_data)*100,1)` % of articles \[numbers are code generated\].
+
 ### CONSORT endorsement
 
 In our preregistration, we stated the following:
@@ -1624,7 +1633,7 @@ mwu_test_result$p.value
 
 Okay, let's write up the result for the manuscript:
 
--   Using a Mann-Whitney U test, we found that the difference between adherence scores for our sample of behavioural addictions articles (*Mdn* = `r behav_addic_median`, *range* = `r behav_addic_min`-`r behav_addic_max`) and Vassar and colleagues' (2019) substance addiction articles (*Mdn* = `r subtance_addic_median`, *range* = `r subtance_addic_min`-`r substance_addic_max`) was statistically significant, *U* = `r format(mwu_test_result$statistic, scientific = FALSE)`, *p* = `r round(mwu_test_result$p.value, 4)`, median~diff~ = `r round(hl_median_diff, 2)` [95% CIs: `r round(hl_conf_int[1,],2)`, `r round(hl_conf_int[2,],2)`]
+-   Using a Mann-Whitney U test, we found that the difference between adherence scores for our sample of behavioural addictions articles (*Mdn* = `r behav_addic_median`, *range* = `r behav_addic_min`-`r behav_addic_max`) and Vassar and colleagues' (2019) substance addiction articles (*Mdn* = `r subtance_addic_median`, *range* = `r subtance_addic_min`-`r substance_addic_max`) was statistically significant, *U* = `r format(mwu_test_result$statistic, scientific = FALSE)`, *p* = `r round(mwu_test_result$p.value, 4)`, median~diff~ = `r round(hl_median_diff, 2)` \[95% CIs: `r round(hl_conf_int[1,],2)`, `r round(hl_conf_int[2,],2)`\]
 
 ## Period-specific comparison
 
@@ -1665,7 +1674,7 @@ This document is rendered in HTML format and published online using [Quarto Pub]
 
 -   quarto publish quarto-pub
 
-The published online version of this document can be accessed here.
+The published online version of this document can be accessed [here](https://robheirene.quarto.pub/data-analysis-consort-adherence-among-behavioural-addiction-rcts/).
 
 ### Git/ Github
 
