@@ -754,6 +754,20 @@ tbL_summary_all  <-  CONSORT_adherence_data_with_study_totals %>%
 
 ```
 
+Out of interest, which study had the highest absolute CONSORT adherence score:
+
+```{r}
+CONSORT_adherence_data_with_study_totals %>% 
+  filter(total_adherence_absolute == max(total_adherence_absolute)) %>% 
+select(title,
+       date_published,
+       total_adherence_absolute,
+       percent_reported)
+ 
+```
+
+-   Smith, D. P., Battersby, M. W., Harvey, P. W., Pols, R. G., & Ladouceur, R. (2015). Cognitive versus exposure therapy for problem gambling: Randomised controlled trial. *Behaviour research and therapy*, *69*, 100–110. https://doi.org/10.1016/j.brat.2015.04.008
+
 ### Behavioural addiction
 
 ```{r message = FALSE, warning = FALSE}
@@ -1111,6 +1125,41 @@ summarise(
          "M % reported" = mean_percent_reported) %>%
   gt()
 ```
+
+As per a (very reasonable) reviewer suggestion, let's also calculate mean difference for the other bivaraite comparison: gaming vs. gambling disorder papers:
+
+```{r}
+# Summarise Adherence rates for each consort group:
+summary_stats_by_disorder <- CONSORT_adherence_data_with_study_totals %>%
+  group_by(behavioural_addiction) %>%
+  summarise(
+    mean_total_adherence = mean(total_adherence_absolute, na.rm = TRUE),
+    sd_total_adherence = sd(total_adherence_absolute, na.rm = TRUE),
+    mean_percent_reported = mean(percent_reported, na.rm = TRUE),
+    sd_percent_reported = sd(percent_reported, na.rm = TRUE),
+    n = n() # capture the sample size for each group
+  ) %>%
+  ungroup()
+
+# Calculate the difference in means and pooled standard deviation as an approximation
+difference_stats_disorder <- summary_stats_by_disorder %>%
+  summarise(
+    difference_mean_total_adherence = diff(mean_total_adherence),
+    pooled_sd_total_adherence = sqrt(((n[1] - 1) * sd_total_adherence[1]^2 + (n[2] - 1) * sd_total_adherence[2]^2) / (n[1] + n[2] - 2)),
+    difference_mean_percent_reported = diff(mean_percent_reported),
+    pooled_sd_percent_reported = sqrt(((n[1] - 1) * sd_percent_reported[1]^2 + (n[2] - 1) * sd_percent_reported[2]^2) / (n[1] + n[2] - 2))
+  )
+
+# View the calculated differences and pooled SDs
+difference_stats_disorder %>%
+  pivot_longer(cols = everything(),
+               names_to = "Metric",
+               values_to = "Value") %>%
+  gt()
+
+```
+
+Gambling disorder studies had a slightly lower mean percentage of relevant items reported compared to Gambling disorder studies (*M*~difference~ = -`r difference_stats_disorder %>% select(difference_mean_percent_reported) %>% mutate(difference_mean_percent_reported  = round(difference_mean_percent_reported , 2)) %>% pull()`, *SD*~pooled~ = `r difference_stats_disorder %>% select(pooled_sd_percent_reported ) %>% mutate(pooled_sd_percent_reported  = round(pooled_sd_percent_reported , 2)) %>% pull()`).
 
 ### Combined outcomes
 
